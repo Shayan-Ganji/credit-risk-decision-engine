@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "credit_risk"
+version = "0.1.0"
+authors = [
+  { name="Shayan Ganji", email="ganshayan2@gmail.com" },
+]
+description = "Cost-Sensitive Credit Risk Machine Learning Decision Engine"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pandas==2.2.2",
+    "numpy==2.0.2",
+    "scikit-learn==1.6.0",
+    "sqlalchemy==2.0.51",
+    "psycopg2-binary==2.9.10",
+    "matplotlib==3.10.5",
+    "seaborn==0.13.2",
+    "joblib==1.4.2",
+]
+
+[project.scripts]
+credit-risk = "credit_risk.cli:main"

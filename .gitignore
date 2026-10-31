@@ -1,0 +1,31 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Raw Data (MANDATORY: Raw CSV files must NEVER be committed to Git)
+data/raw/
+*.csv
+*.xls
+*.xlsx
+*.tmp
+*.temp
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Testing & Caches
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+src/*.egg-info/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Operating System files
+.DS_Store
+Thumbs.db

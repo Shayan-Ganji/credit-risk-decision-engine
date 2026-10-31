@@ -1,0 +1,11 @@
+# Strictly pinned dependencies for Stage 3 Practical Challenge
+# Python >= 3.10 required
+pandas==2.2.2
+numpy==2.0.2
+scikit-learn==1.6.0
+sqlalchemy==2.0.51
+psycopg2-binary==2.9.10
+matplotlib==3.10.5
+seaborn==0.13.2
+joblib==1.4.2
+
