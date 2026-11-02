@@ -1,7 +1,7 @@
 """
 Offline Unit Test Suite for Credit Risk Decision Engine.
-Implements core unit tests verifying feature engineering mathematics, imputation resilience,
-and model pipeline execution.
+Implements 10 rigorous tests verifying feature engineering mathematics, cost matrix evaluation,
+imputation resilience, threshold optimization, and artifact serialization.
 """
 
 from pathlib import Path
@@ -9,13 +9,24 @@ import tempfile
 import unittest
 import numpy as np
 import pandas as pd
+from sklearn.pipeline import Pipeline
 
+from credit_risk.cost import (
+    compute_baseline_cost,
+    compute_financial_cost,
+    evaluate_threshold_grid,
+)
 from credit_risk.features import CreditFeatureEngineer
 from credit_risk.pipeline import create_model_pipeline
+from credit_risk.predict import (
+    load_model_artifact,
+    predict_applicants,
+    save_model_artifact,
+)
 
 
 class TestCreditRiskDecisionEngine(unittest.TestCase):
-    """Test suite covering core machine learning and feature logic."""
+    """Test suite covering core machine learning, cost matrix, and feature logic."""
 
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -154,7 +165,46 @@ class TestCreditRiskDecisionEngine(unittest.TestCase):
         # Row 0: 1.0*1 = 1.0
         self.assertAlmostEqual(out.loc[0, "weighted_delinquency_score"], 1.0)
 
-    # 5. Pipeline Imputation & Execution Resilience
+    # 5. Cost Matrix Mathematics
+    def test_cost_matrix_exact_math(self) -> None:
+        """Verify asymmetric cost loss: FP=1 unit, FN=12 units."""
+        y_true = np.array([0, 0, 1, 1])
+        y_pred = np.array([0, 1, 0, 1])  # TN=1, FP=1, FN=1, TP=1
+
+        res = compute_financial_cost(y_true, y_pred, cost_fp=1.0, cost_fn=12.0)
+        # Total cost = 1*1 + 1*12 = 13.0
+        self.assertEqual(res["total_cost"], 13.0)
+        self.assertEqual(res["fp"], 1)
+        self.assertEqual(res["fn"], 1)
+        # Cost per 1000 = (13 / 4) * 1000 = 3250.0
+        self.assertEqual(res["expected_cost_per_1000"], 3250.0)
+
+    # 6. Baseline Strategy Costs
+    def test_baseline_cost_calculation(self) -> None:
+        """Test approve_all and reject_all benchmark costs."""
+        y_true = np.array([0, 0, 0, 1])  # 1 default out of 4 (25% default rate)
+
+        # Approve all (predict 0): FN=1, FP=0 -> Cost = 12.0 -> Cost/1000 = 3000.0
+        base_approve = compute_baseline_cost(y_true, strategy="approve_all", cost_fp=1.0, cost_fn=12.0)
+        self.assertEqual(base_approve["total_cost"], 12.0)
+        self.assertEqual(base_approve["expected_cost_per_1000"], 3000.0)
+
+        # Reject all (predict 1): FN=0, FP=3 -> Cost = 3.0 -> Cost/1000 = 750.0
+        base_reject = compute_baseline_cost(y_true, strategy="reject_all", cost_fp=1.0, cost_fn=12.0)
+        self.assertEqual(base_reject["total_cost"], 3.0)
+        self.assertEqual(base_reject["expected_cost_per_1000"], 750.0)
+
+    # 7. Decision Threshold Grid Search
+    def test_threshold_grid_search(self) -> None:
+        """Verify that grid search selects cost-minimizing threshold reflecting asymmetric loss."""
+        y_true = np.array([0, 0, 0, 0, 1])  # 20% default rate
+        y_prob = np.array([0.02, 0.05, 0.06, 0.08, 0.15])
+
+        # Under 12:1 cost, a 15% probability defaulter MUST be rejected (threshold <= 0.15)
+        best_t, min_cost, _ = evaluate_threshold_grid(y_true, y_prob, cost_fp=1.0, cost_fn=12.0)
+        self.assertLessEqual(best_t, 0.15)
+
+    # 8. Pipeline Imputation & Execution Resilience
     def test_pipeline_imputation_handles_missing_values(self) -> None:
         """Verify pipeline trains and predicts on datasets containing NaNs without throwing exceptions."""
         X = self.sample_df.drop(columns=["serious_dlq_in_2yrs"])
@@ -174,7 +224,7 @@ class TestCreditRiskDecisionEngine(unittest.TestCase):
         self.assertEqual(len(probs), len(X))
         self.assertTrue(np.all((probs >= 0.0) & (probs <= 1.0)))
 
-    # 6. Pipeline with Logistic Regression and Feature Scaling
+    # 9. Pipeline with Logistic Regression and Feature Scaling
     def test_pipeline_logistic_regression_scaling(self) -> None:
         """Verify Logistic Regression pipeline trains with StandardScaler."""
         X = self.sample_df.drop(columns=["serious_dlq_in_2yrs"])
@@ -192,6 +242,28 @@ class TestCreditRiskDecisionEngine(unittest.TestCase):
         probs = pipeline.predict_proba(X)[:, 1]
         self.assertEqual(len(probs), len(X))
 
+    # 10. Model Artifact Serialization & Inference
+    def test_model_artifact_save_load_predict(self) -> None:
+        """Test full save, load, and applicant scoring cycle."""
+        X = self.sample_df.drop(columns=["serious_dlq_in_2yrs"])
+        y = self.sample_df["serious_dlq_in_2yrs"]
+
+        pipeline = create_model_pipeline("hist_gradient_boosting")
+        pipeline.fit(pd.concat([X] * 4, ignore_index=True), pd.concat([y] * 4, ignore_index=True))
+
+        artifact_path = self.test_root / "test_model.joblib"
+        save_model_artifact(pipeline, optimal_threshold=0.08, metrics={"auc": 0.85}, filepath=artifact_path)
+        self.assertTrue(artifact_path.exists())
+
+        loaded = load_model_artifact(artifact_path)
+        self.assertEqual(loaded["optimal_threshold"], 0.08)
+
+        scored = predict_applicants(X, artifact=loaded)
+        self.assertIn("credit_decision", scored.columns)
+        self.assertIn("default_probability", scored.columns)
+        self.assertEqual(len(scored), len(X))
+
 
 if __name__ == "__main__":
     unittest.main()
+
