@@ -1,5 +1,9 @@
 # Credit Risk Cost-Sensitive Decision Engine
-آزمایشگاه فناوری های مالی داتین- ترم سوم
+**آزمایشگاه فناوری های مالی داتین- ترم سوم**  
+**دانشجو:** شایان گنجی (Shayan Ganji)  
+
+- **مستندات و گزارش‌های تصمیمات مهندسی:** [گزارش فارسی (report.fa.md)](report.fa.md) | [English Report (report.md)](report.md)
+- **نوت‌بوک تحلیلی و روایی:** [نوت‌بوک اجرا شده (solution.ipynb)](solution.ipynb)
 
 ## Quick Start Guide
 ```bash

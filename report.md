@@ -1,6 +1,7 @@
 # Engineering Decisions, Architecture, and Cost Optimization Report: Credit Risk Decision Engine
 **Dotin Financial Technologies Lab - Term 3**  
 **Student:** Shayan Ganji  
+**Language Toggle & Links:** [English Version](report.md) | [نسخه فارسی](report.fa.md) | [Analytical Notebook (solution.ipynb)](solution.ipynb)  
 
 ---
 
